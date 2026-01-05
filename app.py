@@ -47,12 +47,12 @@ def extract_text_from_url(url):
     trafilatura 라이브러리를 사용하여 웹페이지의 주요 콘텐츠만 가져옵니다.
     """
     try:
-        # 디버깅을 위해 URL을 콘솔에 출력
-        print(f'url: {url}')
+        # # 디버깅을 위해 URL을 콘솔에 출력
+        # print(f'url: {url}')
         
         # URL의 HTML 콘텐츠를 다운로드합니다.
         downloaded = trafilatura.fetch_url(url)
-        print(f'downloaded: {downloaded}')
+    #print(f'downloaded: {downloaded}')
         
         # 다운로드에 실패한 경우 None 반환
         if downloaded is None:
@@ -60,7 +60,7 @@ def extract_text_from_url(url):
         
         # HTML에서 본문 텍스트만 추출합니다.
         text = trafilatura.extract(downloaded)
-        print(f'text: {text}')
+        # print(f'text: {text}')
         
         return text
     except Exception as e:
@@ -178,12 +178,8 @@ with st.sidebar:
         else:
             st.warning("API Key가 필요합니다.")
 
-    # 독자 수준 선택 박스 (초/중/고/성인)
-    target_level = st.selectbox(
-        "독자 수준 선택",
-        ["초등생", "중등생", "고등생", "성인"],
-        index=2 # 기본값은 '고등생'
-    )
+    # 독자 수준 선택 박스 (초/중/고/성인) - 사이드바에서 제거됨
+    # target_level = st.selectbox(...) 
     
     st.info("💡 팁: 수준을 변경하면 문제의 난이도와 어휘가 달라집니다.")
 
@@ -191,6 +187,18 @@ with st.sidebar:
 if api_key:
     # OpenAI 클라이언트 인스턴스 생성
     client = OpenAI(api_key=api_key)
+
+    # --- UI Layout: Difficulty Selector & Input ---
+    
+    # 2단 컬럼으로 배치 (왼쪽: 레벨 선택, 오른쪽: 여백)
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        # 독자 수준 선택 박스 (메인 화면으로 이동)
+        target_level = st.selectbox(
+            "독자 수준 선택",
+            ["초등생", "중등생", "고등생", "성인"],
+            index=2 # 기본값은 '고등생'
+        )
     
     # 두 개의 탭 생성 (URL 입력용, 텍스트 직접 입력용)
     tab1, tab2 = st.tabs(["🔗 URL 입력", "📝 텍스트 직접 입력"])
@@ -214,10 +222,6 @@ if api_key:
         with st.spinner("지문을 분석하고 문제를 생성 중입니다..."):
             extracted_text = ""
             
-            # 입력 소스 디버깅 출력
-            print(f'url_input: {url_input}')
-            print(f'if: {True if url_input else False}')
-            
             # URL 입력이 있고 텍스트 입력이 비어있으면 URL 우선 처리
             if url_input and text_input == '': 
                  with st.spinner("URL에서 본문 추출 중..."):
@@ -230,7 +234,6 @@ if api_key:
                 st.warning("URL이나 텍스트 중 하나를 입력해주세요.")
                 st.stop()
             
-            print(f'extracted_text: {extracted_text}')
 
             # 텍스트가 성공적으로 준비되었는지 확인
             if extracted_text:
@@ -254,47 +257,97 @@ if api_key:
     if 'quiz_data' in st.session_state and st.session_state['quiz_data']:
         st.divider() # 구분선
         
-        # 요약문 표시 (문제 풀이의 핵심 지문)
-        st.subheader("📖 지문 읽기")
-        st.info(st.session_state['quiz_data'].get('summary', '요약문이 없습니다.'))
+        # --- 시험지 스타일 CSS 적용 ---
+        st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap');
         
-        st.divider()
-        st.subheader("📝 실전 독해 퀴즈")
+        .test-paper {
+            font-family: 'Nanum Myeongjo', serif;
+            background-color: #fdfbf7;
+            padding: 40px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+        .question-header {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        .passage-box {
+            background-color: #ffffff;
+            padding: 20px;
+            border-left: 5px solid #4a90e2;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            color: #333;
+        }
+        .question-text {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # 퀴즈 입력을 위한 폼 생성
-        with st.form("quiz_form"):
-            questions = st.session_state['quiz_data'].get('questions', [])
+        st.subheader("📝 실전 독해 평가")
+
+        # 시험지 컨테이너 시작
+        with st.container(border=True):
+            st.markdown('<div class="test-paper">', unsafe_allow_html=True)
             
-            for idx, q in enumerate(questions):
-                # 문제 번호와 유형 표시
-                st.markdown(f"**Q{idx+1}. [{q['type']}]**")
-                
-                # 문제 지문 표시 (<보기> 태그 처리)
-                # replace를 통해 보기 섹션을 시각적으로 구분되게 처리
-                st.write(q['question'].replace("<보기>", "\n\n> **<보기>**\n> ").replace("</보기>", "\n\n")) 
-                
-                # 라디오 버튼 형식이지만 선택 초기화(index=None) 상태로 시작
-                # key는 각 위젯을 구분하는 고유 ID여야 함
-                choice = st.radio(
-                    "정답을 선택하세요:",
-                    q['options'],
-                    key=f"q_{idx}",
-                    index=None 
-                )
-                
-                # 사용자가 선택을 변경할 때마다 세션 상태에 답안 저장
-                if choice:
-                    # 선택된 문장의 인덱스를 찾아서 번호(1~5)로 변환
-                    selected_index = q['options'].index(choice) + 1
-                    st.session_state['user_answers'][q['id']] = selected_index
-                
-                st.markdown("---")
+            # 요약문 표시 (지문 영역)
+            st.markdown(f"""
+            <div class="question-header">다음 글을 읽고 물음에 답하시오.</div>
+            <div class="passage-box">
+                {st.session_state['quiz_data'].get('summary', '요약문이 없습니다.')}
+            </div>
+            """, unsafe_allow_html=True)
             
-            # 제출 버튼 (폼 내부의 유일한 제출 트리거)
-            submit_btn = st.form_submit_button("제출 및 채점")
+            # 퀴즈 입력을 위한 폼 생성
+            with st.form("quiz_form"):
+                questions = st.session_state['quiz_data'].get('questions', [])
+                
+                for idx, q in enumerate(questions):
+                    # 문제 번호와 유형 표시 (Markdown으로 스타일링)
+                    st.markdown(f"""
+                    <div class="question-text">
+                        <b>{idx+1}. [{q['type']}]</b><br>
+                        {q['question'].replace("<보기>", "<br><br><b>&lt;보기&gt;</b><br>").replace("</보기>", "")}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # 라디오 버튼 형식이지만 선택 초기화(index=None) 상태로 시작
+                    # key는 각 위젯을 구분하는 고유 ID여야 함
+                    choice = st.radio(
+                        "정답을 선택하세요:",
+                        q['options'],
+                        key=f"q_{idx}",
+                        index=None,
+                        label_visibility="collapsed" # 라벨 숨김 (위에서 커스텀하게 보여줌)
+                    )
+                    
+                    # 사용자가 선택을 변경할 때마다 세션 상태에 답안 저장
+                    if choice:
+                        # 선택된 문장의 인덱스를 찾아서 번호(1~5)로 변환
+                        selected_index = q['options'].index(choice) + 1
+                        st.session_state['user_answers'][q['id']] = selected_index
+                    
+                    st.markdown("<br>", unsafe_allow_html=True) # 간격 추가
+                
+                # 제출 버튼 (폼 내부의 유일한 제출 트리거)
+                submit_btn = st.form_submit_button("제출 및 채점")
+                
+                if submit_btn:
+                    st.session_state['submitted'] = True
             
-            if submit_btn:
-                st.session_state['submitted'] = True
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # 채점 결과 화면 (제출 되었을 때만 표시)
         if st.session_state.get('submitted', False):
