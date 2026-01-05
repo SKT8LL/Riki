@@ -21,12 +21,19 @@ st.set_page_config(
 # OpenAI 클라이언트 초기화 (API Key 확인)
 # 1순위: Streamlit Secrets (클라우드 환경)
 # 2순위: 로컬 환경 변수 (.env)
-if "OPENAI_API_KEY" in st.secrets:
-    api_key = st.secrets["OPENAI_API_KEY"]
-else:
+api_key = None
+try:
+    if "OPENAI_API_KEY" in st.secrets:
+        api_key = st.secrets["OPENAI_API_KEY"]
+except FileNotFoundError:
+    # 로컬 실행 시 .streamlit/secrets.toml 파일이 없으면 에러가 발생하므로 무시하고 진행
+    pass
+
+# Secrets에서 못 찾았으면 환경 변수 확인
+if not api_key:
     api_key = os.getenv("OPENAI_API_KEY")
 
-# API 키가 없는 경우 처리
+# API 키가 아직도 없으면 Session State 확인
 if not api_key:
     # Streamlit의 session_state(세션 상태)에 키가 저장되어 있는지 확인합니다.
     if "OPENAI_API_KEY" not in st.session_state:
@@ -234,9 +241,13 @@ if api_key:
     # 퀴즈 풀이 화면 (퀴즈 데이터가 있을 때만 표시)
     if 'quiz_data' in st.session_state and st.session_state['quiz_data']:
         st.divider() # 구분선
-        st.subheader("📝 실전 독해 퀴즈")
         
-        # 사용자 요구사항에 따라 본문은 다시 보여주지 않음
+        # 요약문 표시 (문제 풀이의 핵심 지문)
+        st.subheader("📖 지문 읽기")
+        st.info(st.session_state['quiz_data'].get('summary', '요약문이 없습니다.'))
+        
+        st.divider()
+        st.subheader("📝 실전 독해 퀴즈")
         
         # 퀴즈 입력을 위한 폼 생성
         with st.form("quiz_form"):
