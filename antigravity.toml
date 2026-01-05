@@ -1,0 +1,2 @@
+[run]
+entrypoint = "streamlit run app.py"
